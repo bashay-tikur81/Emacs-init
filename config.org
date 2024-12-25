@@ -1,0 +1,267 @@
+#+TITLE: Emacs Configuration
+#+AUTHOR: Ertale81
+#+DESCRIPTION: Emacs using org mode
+#+STARTUP: content
+#+OPTIONS: toc:2
+
+* Emacs Package Manager
+** Package Manager
+#+begin_src emacs-lisp
+  (setq package-archives
+	'(("gnu" . "https://elpa.gnu.org/packages/")
+	("melpa" . "https://melpa.org/packages/")))
+#+end_src
+** Elpaca Package Manager
+#+begin_src emacs-lisp
+  (defvar elpaca-installer-version 0.6)
+  (defvar elpaca-directory (expand-file-name "elpaca/" user-emacs-directory))
+  (defvar elpaca-builds-directory (expand-file-name "builds/" elpaca-directory))
+  (defvar elpaca-repos-directory (expand-file-name "repos/" elpaca-directory))
+  (defvar elpaca-order '(elpaca :repo "https://github.com/progfolio/elpaca.git"
+				:ref nil
+				:files (:defaults "elpaca-test.el" (:exclude "extensions"))
+				:build (:not elpaca--activate-package)))
+  (let* ((repo  (expand-file-name "elpaca/" elpaca-repos-directory))
+	 (build (expand-file-name "elpaca/" elpaca-builds-directory))
+	 (order (cdr elpaca-order))
+	 (default-directory repo))
+    (add-to-list 'load-path (if (file-exists-p build) build repo))
+    (unless (file-exists-p repo)
+      (make-directory repo t)
+      (when (< emacs-major-version 28) (require 'subr-x))
+      (condition-case-unless-debug err
+	  (if-let ((buffer (pop-to-buffer-same-window "*elpaca-bootstrap*"))
+		   ((zerop (call-process "git" nil buffer t "clone"
+					 (plist-get order :repo) repo)))
+		   ((zerop (call-process "git" nil buffer t "checkout"
+					 (or (plist-get order :ref) "--"))))
+		   (emacs (concat invocation-directory invocation-name))
+		   ((zerop (call-process emacs nil buffer nil "-Q" "-L" "." "--batch"
+					 "--eval" "(byte-recompile-directory \".\" 0 'force)")))
+		   ((require 'elpaca))
+		   ((elpaca-generate-autoloads "elpaca" repo)))
+	      (progn (message "%s" (buffer-string)) (kill-buffer buffer))
+	    (error "%s" (with-current-buffer buffer (buffer-string))))
+	((error) (warn "%s" err) (delete-directory repo 'recursive))))
+    (unless (require 'elpaca-autoloads nil t)
+      (require 'elpaca)
+      (elpaca-generate-autoloads "elpaca" repo)
+      (load "./elpaca-autoloads")))
+  (add-hook 'after-init-hook #'elpaca-process-queues)
+  (elpaca `(,@elpaca-order))
+#+end_src
+
+** Package initializer
+#+begin_src emacs-lisp
+    ;; package initialization
+  (require 'package)
+  (package-initialize)
+#+end_src
+
+* common configurations
+** Disabling the GUI menu
+#+begin_src emacs-lisp
+    (menu-bar-mode 1)
+    (tool-bar-mode -1)
+    (scroll-bar-mode -1)
+    (setq inhibit-splash-screen t)
+  ;; maximize screen on startup
+  (add-hook 'window-setup-hook 'toggle-frame-maximized t)
+
+    (setq inhibit-startup-message t
+	  visible-bell nil)
+  (set-face-attribute 'default nil :font "monospace-18")
+  ;;(set-face-attribute 'default nil :height 120)
+
+  ;;(set-face-attribute 'default nil : font "DejaVu ")
+
+  (display-line-numbers-mode t) ;; enable global line number
+  (setq display-line-numbers-type 'relative) ;; make line num relative
+#+end_src
+
+** Org mode configuration
+#+begin_src emacs-lisp
+    ;; Enable Org mode
+    (require 'org)
+    ;; Make Org mode work with files ending .org
+    ;; (add-to-list 'auto-mode-alist '("\\.org$" . org.mode))
+
+    ;; disable line number on org mode only
+    (defun nolinum()
+      (interactive)
+      (global-linum-mode 0)
+      (linum-mode 0)
+      )
+    (add-hook 'org-mode-hook 'nolinum)
+  ;;setting some keybindings on emacs
+  (global-set-key (kbd "C-c l") #'org-store-link)
+
+  (global-set-key (kbd "C-c a") #'org-agenda)
+  (global-set-key (kbd "C-c c") #'org-capture)
+
+#+end_src
+
+** Setting cursor
+#+begin_src emacs-lisp
+  ;; setting cursor type to a single vertical line
+  (setq-default cursor-type 'bar)
+#+end_src
+
+** Setting themes
+#+begin_src emacs-lisp
+  (load-theme 'modus-vivendi 1)
+  (setq modus-themes-line '(accented borderless padded))
+  ;;(setq modus-themes-region '(accented no-extend))
+  (setq modus-themes-region '(bg-only))
+  (setq modus-themes-italic-constructs t)
+  (setq modus-themes-paren-match '(bold intens))
+  (setq modus-themes-prompts '(bold intens))
+#+end_src
+
+** Setting GNU like indenting for C-programming
+#+begin_src emacs-lisp
+    (setq c-default-style "linux" c-basic-offset 4)
+    ;; turn on electric pair mode, auto closing brackets
+    (electric-pair-mode 1)
+#+end_src
+
+** Loading HTML helper mode
+#+begin_src emacs-lisp
+  (setq load-path (cons "~/elisp/html-helper-mode.el " load-path))
+  (autoload 'html-helper-mode "html-helper-mode" "Yay HTML" t)
+#+end_src
+
+** Emacs for Front End Development
+#+begin_src emacs-lisp
+  ;; to automatically load these packages
+  ;; for web related files
+  ;; (add-to-list 'auto-mode-alist '("\\.js\\'" . js2-mode))
+  ;; (add-to-list 'auto-mode-alist '("\\.ts\\'" . web-mode))
+  ;; (add-to-list 'auto-mode-alist '("\\.html?\\'" . web-mode))
+  ;; (add-to-list 'auto-mode-alist '("\\.css?\\'" . web-mode))
+#+end_src
+#+begin_src emacs-lisp
+  ;; Setting web-mode
+  (custom-set-variables
+   ;; custom-set-variables was added by Custom.
+   ;; If you edit it by hand, you could mess it up, so be careful.
+   ;; Your init file should contain only one such instance.
+   ;; If there is more than one, they won't work right.
+   '(package-selected-packages '(web-mode-edit-element web-mode js2-mode))
+   '(warning-suppress-log-types '((comp))))
+  (custom-set-faces
+   ;; custom-set-faces was added by Custom.
+   ;; If you edit it by hand, you could mess it up, so be careful.
+   ;; Your init file should contain only one such instance.
+   ;; If there is more than one, they won't work right.
+   )
+
+#+end_src
+
+#+begin_src emacs-lisp
+   ;;Setting indentation for web-mode
+  (defun my-web-mode-hook ()
+       "Hooks for Web mode."
+       (setq web-mode-markup-indent-offset 4)
+       (setq web-mode-code-indent-offset 4)
+       (setq web-mode-css-indent-offset 4)
+     )
+     (add-hook 'web-mode-hook  'my-web-mode-hook)    
+     (setq tab-width 4)
+
+#+end_src
+
+** Disabling Mouse control in Emacs
+#+begin_src emacs-lisp
+  (dolist (k '([mouse-1] [down-mouse-1] [drag-mouse-1] [double-mouse-1] [triple-mouse-1]
+  [mouse-2] [down-mouse-2] [drag-mouse-2] [double-mouse-2] [triple-mouse-2]
+  [mouse-3] [down-mouse-3] [drag-mouse-3] [double-mouse-3] [triple-mouse-3]
+  [mouse-4] [down-mouse-4] [drag-mouse-4] [double-mouse-4] [triple-mouse-4]
+  [mouse-5] [down-mouse-5] [drag-mouse-5] [double-mouse-5] [triple-mouse-5]))
+      (global-unset-key k))
+    ;; End of mouse disable in emacs
+#+end_src
+
+** ido-mode
+#+begin_src emacs-lisp
+  (setq ido-everywhere t)
+  (setq ido-enable-flex-matching nil)
+  (setq ido-create-new-buffer 'always)
+  ;;(ido-mode 1) ;; disabling ido-mode
+  (fido-vertical-mode 1) ;; Show completions dynamically in minibuffer.
+#+end_src
+
+** Configuring 'Helm' emacs frame work
+#+begin_src emacs-lisp
+
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(package-selected-packages '(helm web-mode-edit-element web-mode js2-mode))
+ '(warning-suppress-log-types '((comp))))
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ )
+#+end_src
+
+** Miscellaneous configurations
+#+begin_src emacs-lisp
+    (recentf-mode 1)
+    (savehist-mode 1)
+    (save-place-mode 1)
+    (setq use-dialog-box nil)
+    ;; Revert buffers when the underlying file has changed
+    (global-auto-revert-mode 1)
+    ;; Revert Dired and other buffers
+    (setq global-auto-revert-non-file-buffers t)
+    ;; Disable the splash screen
+    (setq inhibitsplash-sreen t)
+    ;; Enable transsient mark mode
+    (transient-mark-mode 1)
+
+    ;; Show matching parenthesise
+    (show-paren-mode 1)
+    ;; Display line numbers when programming
+    (add-hook 'prog-mode-hook 'display-line-numbers-mode)
+    ;; automatically add new line
+    (setq-default require-final-newline t)
+    ;; hiding emphasise markers
+    (setq org-hide-emphasis-markers t)
+    ;; Add emojis to org-mode
+    (setq org-pretty-entities t)
+    ;; Set line wraping(line truncation), visual line mode
+    (global-visual-line-mode 1)
+
+#+end_src
+
+** Working with TODO in org mode
+#+begin_src emacs-lisp
+  ;; To cycle state of a TODO items, Multi-state workflow
+  (setq org-todo-keywords
+	'((sequence "TODO" "FEEDBACK" "VERIFY" "|" "DONE" "DELEGATED")))
+  ;; Keep track of when certain TODO was markd as done, keep timestamp
+  (setq org-log-done 'time)
+  ;; Keep track with taking note
+  (setq org-log-done 'note)
+#+end_src
+** Org-bullets
+#+begin_src emacs-lisp
+  (require 'org-bullets)
+  (setq org-bullets-bullet-list '("☯" "○" "✸" "✿" "~"))
+  (add-hook 'org-mode-hook (lambda () (org-bullets-mode 1)))
+#+end_src
+** Proper indentation
+#+begin_src emacs-lisp
+  (add-hook 'org-mode-hook #'org-indent-mode)
+#+end_src
+** Ispell mode
+#+begin_src emacs-lisp
+  (add-hook 'text-mode-hook 'flyspell-mode)
+  (add-hook 'org-mode-hook 'flyspell-mode)
+  (add-hook 'prog-mode-hook 'flyspell-prog-mode)
+#+end_src
