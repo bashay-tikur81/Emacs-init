@@ -11,7 +11,7 @@
 	'(("gnu" . "https://elpa.gnu.org/packages/")
 	("melpa" . "https://melpa.org/packages/")))
 #+end_src
-** COMMENT Elpaca Package Manager
+** Elpaca Package Manager
 #+begin_src emacs-lisp
   (defvar elpaca-installer-version 0.6)
   (defvar elpaca-directory (expand-file-name "elpaca/" user-emacs-directory))
@@ -249,13 +249,23 @@
   ;; Keep track with taking note
   (setq org-log-done 'note)
 #+end_src
+** Org-bullets
+#+begin_src emacs-lisp
+  (require 'org-bullets)
+  (setq org-bullets-bullet-list '("☯" "○" "✸" "✿" "~"))
+  (add-hook 'org-mode-hook (lambda () (org-bullets-mode 1)))
+#+end_src
+** Disabling underscore to subscript
+#+begin_src emacs-lisp
+  (setq org-use-sub-superscripts nil)
+#+end_src
+** Proper indentation
+#+begin_src emacs-lisp
+  (add-hook 'org-mode-hook #'org-indent-mode)
+#+end_src
 ** Ispell mode
 #+begin_src emacs-lisp
   (add-hook 'text-mode-hook 'flyspell-mode)
   (add-hook 'org-mode-hook 'flyspell-mode)
   (add-hook 'prog-mode-hook 'flyspell-prog-mode)
-#+end_src
-** COMMENT Magit
-#+begin_src emacs-lisp
-  (use-package magit)
 #+end_src
